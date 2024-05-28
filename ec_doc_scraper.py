@@ -1,11 +1,13 @@
 import os
 import requests
+import warnings
 import pandas as pd
 from bs4 import BeautifulSoup
 from pprint import pprint
 from tqdm import tqdm
 
 tqdm.pandas()
+warnings.filterwarnings("ignore")
 
 base_url = "https://environmentclearance.nic.in"
 state_codes = {"Andhra_Pradesh": "02", "Arunachal_Pradesh": "03", "Assam": "04", "Bihar": "05", "Chhattisgarh": "33",
@@ -64,7 +66,11 @@ def generate_pdf_links(state):
     main_df = pd.read_csv(f"../{state}/{state}_ec_maindata.csv")
     main_df.rename({"Unnamed: 0": "index"}, axis=1, inplace=True)
 
+    # Add a column with each project's pid
+    main_df["pid"] = main_df["Link"].apply(lambda x: x.split("=")[-1])
+
     # Append separate columns with download links for each file type
+    print("Grabbing document download links for each project...")
     links_df = main_df.loc[:, "Link"].progress_apply(lambda row: grab_project_pdf_links(row)).apply(pd.Series)
 
     df = pd.concat([main_df, links_df], axis=1)
@@ -75,7 +81,8 @@ def generate_pdf_links(state):
 # Download all the pdfs for a particular project
 def download_project_pdfs(project, directory, column_name):
 
-    pdf_path = f"{directory}{project['Proposal.No.'].replace('/', '+')}_{column_name}.pdf"
+    pdf_path = f"{directory}{project['pid']}_{column_name}"
+    pdf_path = pdf_path + ".pdf" if column_name != "Form2" else pdf_path + ".html"
 
     # Quit if the link doesn't exist or the pdf is already downloaded
     if type(project[column_name]) != str or str(project[column_name]) == "NaN" or str(project[column_name]) == "" or os.path.isfile(pdf_path):
@@ -111,9 +118,9 @@ def download_all_pdfs(df, state):
         os.mkdir(output_directory)
 
     # For each type of file to download
-    for column_index in range(14, len(df.columns)):
-        print(df.columns[column_index] + "s")
+    for column_index in range(15, len(df.columns)):
         # Download it for each project
+        print(f"Downloading {df.columns[column_index] + 's'}...")
         df.progress_apply(download_project_pdfs, axis=1, args=(output_directory, df.columns[column_index],))
 
 
