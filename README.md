@@ -13,3 +13,6 @@ This script is not as useful as hoped, it fails to download the main page data a
 
 ### ec_doc_scraper
 Given the static link to each non-coal mining project's main EC page, grabs all PDF documentations for the project uploaded to https://environmentclearance.nic.in/
+
+### ec_parivesh_scraper
+Given the proposal number of each non-coal mining project, grab all information about it available at https://parivesh.nic.in/
