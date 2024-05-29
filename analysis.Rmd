@@ -1,0 +1,271 @@
+---
+title: "EC data in Kerala"
+author: "Karnav Popat"
+date: "29/05/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE, eval=TRUE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, eval = TRUE)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(sf)
+library(kableExtra)
+library(ggthemes)
+sf_use_s2(FALSE)
+```
+
+```{r data, include=FALSE, eval=TRUE}
+# Load the two compiled datasets, one from the main pages and one from Parivesh/docs
+data <- read.csv("../polsci/Kerala/Kerala_ec_pdf_links.csv")
+parivesh <- read.csv("../polsci/Kerala/Kerala_ec_compiled_data.csv")
+districts <- st_read("../polsci/Shape_India/DISTRICT_BOUNDARY.shp")
+```
+
+```{r data_table, echo=FALSE}
+# Convert the dates to datetime format
+data <- data%>%
+  mutate(date1 = dmy(str_extract(Date_1, "(?<=: ).*")), date2 = dmy(str_extract(Date_2, "(?<=: ).*")))%>%
+  dplyr::select(Proposal.No., Proposal.Name, State, District, Tehsil, date1, date2, Category, Company, Status, pid)%>%
+  rename(proposalnum = Proposal.No., name = Proposal.Name)
+
+# Clean and calculate the delay between the two dates in the df
+data <- data%>%
+  filter(!is.na(date1))%>%
+  filter(!is.na(date2))%>%
+  mutate(delay = date2 - date1)%>%
+  filter(delay >= 0)
+
+# Merge the maindata and the Parivesh data
+data <- inner_join(data, parivesh, by = c("pid" = "pid", "proposalnum" = "proposal_num"))
+```
+
+```{r parivesh_table, echo=FALSE}
+kable(head(data), caption="Kerala Parivesh data")
+```
+
+``` {r dates_plot, echo=FALSE}
+# Submission date plotted against grant date
+ggplot(data, aes(x = date1, y = date2)) +
+  geom_line() +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Date 1 vs Date 2 by project") +
+  xlab("Date 1") +
+  ylab("Date 2") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r delay_date_plot, echo=FALSE}
+# Project delay over time
+ggplot(data, aes(x = date1, y = delay)) +
+  geom_line() +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = TRUE, color = "skyblue") + 
+  labs(title = "Delay by project over time") +
+  xlab("Date 1") +
+  ylab("Delay (days)") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r delay_hist, echo=FALSE}
+ggplot(data, aes(x=delay)) +
+  geom_histogram(color="skyblue", fill="white") +
+  labs(title = "Distribution of distance between dates") +
+  xlab("Delay (days)") +
+  ylab("Number of Observations") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r yearly_delay_plot, echo=FALSE}
+# Aggregate by year
+means <- data%>%
+  mutate(year = year(date1))%>%
+  group_by(year)%>%
+  mutate(mean_delay = mean(delay))%>%
+  mutate(count = n())
+
+ggplot(means, aes(x=year, y=mean_delay)) +
+  geom_line() +
+  geom_point(aes(size=count)) +
+  labs(title = "Mean delay across years") +
+  xlab("Year") +
+  ylab("Average Delay (days)") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r seasonal_delay_plot, echo=FALSE}
+# Aggregate by month
+means <- data%>%
+  filter(date1 <= ymd('2020-03-01') | date1 >= ymd('2021-06-30'))%>%
+  mutate(month1 = month(date1), month2 = month(date2))%>%
+  group_by(month1)%>%
+  mutate(mean_delay1 = mean(delay))%>%
+  mutate(count1 = n())%>%
+  ungroup()%>%
+  group_by(month2)%>%
+  mutate(mean_delay2 = mean(delay))%>%
+  mutate(count2 = n())%>%
+  ungroup()
+
+# What is the best/worst month to submit your project in?
+# Series 1 records the month of submission while Series 2 records the month of grant
+ggplot(means) +
+  geom_line(aes(x=month1, y=mean_delay1)) +
+  geom_point(aes(x=month1, y=mean_delay1, size=count1, color="date 1")) +
+  geom_line(aes(x=month2, y=mean_delay2)) +
+  geom_point(aes(x=month2, y=mean_delay2, size=count2, color="date 2")) +
+  labs(title = "Mean delay across the year") +
+  xlab("Month") +
+  ylab("Average Delay (days)") +
+  theme_economist() + scale_fill_economist()
+```
+
+```{r parse_latlong}
+# Accept each raw latitude string
+parse_lat <- function(latlong_string) {
+  # If it has commas (it came from a properly filled Form-2)
+  if (grepl(",", latlong_string)) {
+    # Convert it to numeric
+    parts <- unlist(strsplit(latlong_string, ","))
+    if (length(parts) == 3) {
+      num1 <- as.numeric(parts[1])
+      num2 <- as.numeric(parts[2]) / 60
+      num3 <- as.numeric(parts[3]) / 3600
+      result <- num1 + num2 + num3
+      return(result)
+    } 
+    else {
+      num1 <- as.numeric(parts[1])
+      num2 <- as.numeric(parts[2]) / 60
+      result <- num1 + num2
+      return(result)
+    }
+  # If it's a decimal (improperly filled Form-2 or Parivesh)
+  } else {
+    # Make sure the decimal is in the right place
+    result <- gsub("\\.", "", latlong_string)
+    result <- ifelse(substr(result, 1, 1) %in% c("6", "7", "8", "9"),
+                              paste0(substr(result, 1, 1), ".", substr(result, 2, nchar(result))),
+                              paste0(substr(result, 1, 2), ".", substr(result, 3, nchar(result))))
+    result <- as.numeric(result)
+    return(result)
+  }
+}
+
+# Do the same thing for longitude as latitude
+parse_long <- function(latlong_string) {
+  if (grepl(",", latlong_string)) {
+    parts <- unlist(strsplit(latlong_string, ","))
+    if (length(parts) == 3) {
+      num1 <- as.numeric(parts[1])
+      num2 <- as.numeric(parts[2]) / 60
+      num3 <- as.numeric(parts[3]) / 3600
+      result <- num1 + num2 + num3
+      return(result)
+    } 
+    else {
+      num1 <- as.numeric(parts[1])
+      num2 <- as.numeric(parts[2]) / 60
+      result <- num1 + num2
+      return(result)
+    }
+  } else {
+    result <- gsub("\\.", "", latlong_string)
+    result <- paste0(substr(result, 1, 2), ".", substr(result, 3, nchar(result)))
+    result <- as.numeric(result)
+    return(result)
+  }
+}
+```
+
+```{r latlong, echo=FALSE}
+data <- data%>%
+  rowwise() %>%
+  mutate(lat_north = parse_lat(lat_north))%>%
+  mutate(lat_south = parse_lat(lat_south))%>%
+  mutate(long_east = parse_long(long_east))%>%
+  mutate(long_west = parse_long(long_west))
+```
+
+```{r create_latlong}
+# Take the average of the latitude and longitude bounds if both exist, 
+# otherwise take whichever one exists
+data <- data%>%
+  mutate(latitude = ifelse(!is.na(lat_north) & !is.na(lat_south), 
+                           (lat_north + lat_south) / 2, 
+                           ifelse(!is.na(lat_north), 
+                                  lat_north, 
+                                  ifelse(!is.na(lat_south),
+                                         lat_south, 
+                                         NA))))%>%
+  
+  mutate(longitude = ifelse(!is.na(long_east) & !is.na(long_west), 
+                           (long_east + long_west) / 2, 
+                           ifelse(!is.na(long_east), 
+                                  long_east, 
+                                  ifelse(!is.na(long_west),
+                                         long_west, 
+                                         NA))))%>%
+  filter(latitude >= 6 & latitude <= 36)%>%
+  filter(longitude >= 68 & longitude <= 98)
+
+data_sf <- st_as_sf(data, coords = c("longitude", "latitude"), crs = 4326)
+
+```
+
+```{r latlong_plot, echo=FALSE}
+# Latitude and Longitude coordinates
+ggplot(data) +
+  geom_point(aes(x=longitude, y=latitude, color=District)) +
+  labs(title = "Projects by latitude and longitude") +
+  xlab("Latitude") +
+  ylab("Longitude") +
+  theme_economist() + scale_fill_economist()
+
+# Coordinates with India map
+ggplot() +
+  geom_sf(data = districts, linetype=1) +
+  geom_sf(data = data_sf, aes(color=delay)) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+
+kerala_data_sf <- data_sf%>%
+  filter(State == "Kerala")%>%
+  mutate(year = year(date1))
+kerala_districts <- districts%>%
+  filter(STATE == "KERALA")
+
+# Visualize Kerala only
+ggplot() +
+  geom_sf(data = kerala_districts, linetype=1) +
+  geom_sf(data = kerala_data_sf, aes(color=District)) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+
+ggplot() +
+  geom_sf(data = kerala_districts, linetype=1) +
+  geom_sf(data = kerala_data_sf, aes(color=delay)) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+
+ggplot() +
+  geom_sf(data = kerala_districts, linetype=1) +
+  geom_sf(data = kerala_data_sf, aes(color=organization_status)) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+
+# By year
+ggplot() +
+  geom_sf(data = kerala_districts, linetype=1) +
+  geom_sf(data = kerala_data_sf, aes(color=District)) +
+  facet_wrap(~year) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+
+ggplot() +
+  geom_sf(data = kerala_districts, linetype=1) +
+  geom_sf(data = kerala_data_sf, aes(color=delay)) +
+  facet_wrap(~year) +
+  scale_fill_viridis_c(option = "magma") +
+  ggtitle(label = "Projects by District")
+```

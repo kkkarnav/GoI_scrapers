@@ -107,25 +107,57 @@ def parse_caf_json(caf_json):
         prow["status"] = caf_data["proponentApplications"]["last_status"]
         prow["project_name"] = project_details["project_name"]
         prow["project_description"] = project_details["project_description"]
+    except:
+        pass
+
+    try:
+        prow["major_activity"] = third_table.find_all('tr')[2].find_all('td')[1].get_text(strip=True)
+        prow["minor_activity"] = third_table.find_all('tr')[3].find_all('td')[1].get_text(strip=True)
+        prow["category"] = caf_data["clearence"]["project_category"]
+    except:
+        pass
+
+    try:
+        prow["lat_south"] = project_details["cafKML"][0]["sw_extend"].split(",")[0] if project_details["cafKML"][0]["sw_extend"] != "" else ""
+        prow["long_west"] = project_details["cafKML"][0]["sw_extend"].split(",")[1] if project_details["cafKML"][0]["sw_extend"] != "" else ""
+    except:
+        pass
+
+    try:
+        prow["lat_north"] = project_details["cafKML"][0]["ne_extend"].split(",")[0] if project_details["cafKML"][0]["ne_extend"] != "" else ""
+        prow["long_east"] = project_details["cafKML"][0]["ne_extend"].split(",")[1] if project_details["cafKML"][0]["ne_extend"] != "" else ""
+    except:
+        pass
+
+    try:
         prow["date_clearance_creation"] = caf_data["clearence"]["created_on"]
         prow["date_clearance_update"] = caf_data["clearence"]["updated_on"]
         prow["date_submission"] = caf_data["proponentApplications"]["last_submission_date"]
         prow["date_undertaking"] = caf_data["clearence"]["ecOthersDetail"]["undertaking_date"]
         prow["date_last_submission"] = caf_data["clearence"]["ecOthersDetail"]["submission_date"]
-        prow["applicant_state"] = caf_data["proponentApplications"]["state"]
-        prow["applicant_district_code"] = project_details["applicant_district"]
-        prow["applicant_pincode"] = project_details["applicant_pincode"]
-        prow["applicant_street"] = project_details["applicant_street"]
+    except:
+        pass
+
+    try:
         prow["applicant"] = project_details["applicant_name"]
         prow["applicant_email"] = project_details["applicant_email"]
         prow["organization"] = project_details["organization_name"]
         prow["organization_status"] = project_details["organization_legal_status"]
+        prow["applicant_state"] = caf_data["proponentApplications"]["state"]
+        prow["applicant_district"] = project_details["cafKML"][0]["cafKMLPlots"][0]["district"]
+        prow["applicant_tehsil"] = project_details["cafKML"][0]["cafKMLPlots"][0]["sub_District"]
+        prow["applicant_village"] = project_details["cafKML"][0]["cafKMLPlots"][0]["village"]
+        prow["applicant_pincode"] = project_details["applicant_pincode"]
+        prow["applicant_street"] = project_details["applicant_street"]
+    except:
+        pass
+
+    try:
         prow["product_id"] = product_details["product_id"]
         prow["product"] = product_details["product_name"]
         prow["quantity"] = product_details["quantity"]
         prow["quantity_unit"] = product_details["unit"]
         prow["transport"] = product_details["transport_mode"]
-        # prow["kmls"] = {"kml": project_details["cafKML"], "location": project_details["cafLocationOfKml"]}
     except:
         pass
 
@@ -149,8 +181,9 @@ def scrape_parivesh_data(session, state):
 
     # Insert PIDS and fill out other columns
     parivesh_df["pid"] = df["pid"].reset_index(drop=True)
+    parivesh_df["proposal_num"] = df["Proposal.No."].reset_index(drop=True)
     parivesh_df.loc[parivesh_df["parivesh_id"] == 500, "parivesh_id"] = ""
-    parivesh_df["is_parivesh"] = parivesh_df["proposal_num"].apply(lambda row: 1 if row == row else 0)
+    parivesh_df["is_parivesh"] = parivesh_df["caf_id"].apply(lambda row: 1 if row == row else 0)
 
     print(parivesh_df)
     parivesh_df.to_csv(output_path, index=False)
