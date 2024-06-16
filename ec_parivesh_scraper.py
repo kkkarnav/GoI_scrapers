@@ -81,7 +81,7 @@ def grab_caf_data(session, proposal_num):
 
 
 # Convert a project's Parivesh json into an entry in the csv
-def parse_caf_json(caf_json):
+def parse_caf_json(state, pid, caf_json):
 
     # Return if the project isn't on Parivesh (it'll have an html Form-2 instead)
     if type(caf_json) == int:
@@ -89,6 +89,10 @@ def parse_caf_json(caf_json):
 
     prow = {}
     caf_data = json.loads(caf_json)["data"]
+
+    # Store the json to file
+    with open(f"../{state}/pdfs/{pid}_parivesh.json", "w") as file:
+        json.dump(caf_data, file)
 
     # Some projects don't have product details included
     try:
@@ -161,10 +165,6 @@ def parse_caf_json(caf_json):
     except:
         pass
 
-    # Dump a sample project json to file
-    # with open('./sample.json', 'w') as json_file:
-    #     json.dump(caf_data, json_file, indent=4)
-
     return prow
 
 
@@ -176,7 +176,7 @@ def scrape_parivesh_data(session, state):
     df = pd.read_csv(f"../{state}/{state}_ec_pdf_links.csv")
 
     # Scrape Parivesh for each proposal number and add it to the df
-    parivesh_df = df.progress_apply(lambda row: parse_caf_json(grab_caf_data(session, row["Proposal.No."])), axis=1)
+    parivesh_df = df.progress_apply(lambda row: parse_caf_json(state, row["pid"], grab_caf_data(session, row["Proposal.No."])), axis=1)
     parivesh_df = pd.json_normalize(parivesh_df)
 
     # Insert PIDS and fill out other columns
@@ -191,7 +191,7 @@ def scrape_parivesh_data(session, state):
 
 if __name__ == "__main__":
 
-    state_name = "Kerala"
+    state_name = "West_Bengal"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

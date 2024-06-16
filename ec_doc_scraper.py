@@ -120,13 +120,13 @@ def download_all_pdfs(df, state):
     # For each type of file to download
     for column_index in range(15, len(df.columns)):
         # Download it for each project
-        print(f"Downloading {df.columns[column_index] + 's'}...")
+        print(f"Downloading {str(df.columns[column_index]) + 's'}...")
         df.progress_apply(download_project_pdfs, axis=1, args=(output_directory, df.columns[column_index],))
 
 
 if __name__ == "__main__":
 
-    state_name = "Kerala"
+    state_name = "West_Bengal"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

@@ -266,8 +266,7 @@ def construct_form2_df(state):
     form2_df.to_csv(output_path, index=False)
 
 
-def merge_sources(state):
-    output_path = f"../{state}/{state}_ec_compiled_data.csv"
+def merge_sources(state, output_path):
     p_df = pd.read_csv(f"../{state}/{state}_ec_parivesh_data.csv")
     f_df = pd.read_csv(f"../{state}/{state}_ec_form2_data.csv")
 
@@ -279,10 +278,11 @@ def merge_sources(state):
 
 
 if __name__ == "__main__":
-    state_name = "Kerala"
+    state_name = "Andhra_Pradesh"
+    path = f"../{state_name}/{state_name}_ec_compiled_data.csv"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():
 
     construct_form2_df(state_name)
-    merge_sources(state_name)
+    merge_sources(state_name, path)
