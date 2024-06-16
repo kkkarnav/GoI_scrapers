@@ -1,0 +1,241 @@
+---
+title: "Voucher data from Odisha"
+author: "Karnav Popat"
+date: "16/06/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE, eval=TRUE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, eval = TRUE)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(sf)
+library(kableExtra)
+library(ggthemes)
+library(stringr)
+sf_use_s2(FALSE)
+```
+
+```{r data, include=FALSE, eval=TRUE}
+# Load the compiled dataset
+df <- read.csv("./Odisha_2015_voucher_details.csv")
+districts <- st_read("../polsci/Shape_India/DISTRICT_BOUNDARY.shp")
+```
+
+```{r data_table, echo=FALSE, include=TRUE}
+kable(head(df), caption="Voucher details")
+```
+
+``` {r year_plot, echo=FALSE}
+# Voucher date plotted against frequency across the year
+date_counts <- df%>%
+    mutate(date = ymd(date))%>%
+    group_by(date, entry)%>%
+    summarise(count = n(), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = count, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Number of Vouchers by date",
+       x = "Date",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r year_amount_plot, echo=FALSE}
+# Voucher date plotted against frequency across the year
+date_counts <- df%>%
+    mutate(amount = as.integer(amount))%>%
+    mutate(date = ymd(date))%>%
+    group_by(date, entry)%>%
+    summarise(sum = sum(amount, na.rm=TRUE), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = sum, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Amount of Vouchers by date",
+       x = "Date",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r year_month_plot, echo=FALSE}
+# Voucher date plotted against frequency across the year, aggregated to month
+date_counts <- df%>%
+    mutate(date = month(date))%>%
+    group_by(date, entry)%>%
+    summarise(count = n(), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = count, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Number of Vouchers by month",
+       x = "Month",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r year_month_amount_plot, echo=FALSE}
+# Voucher date plotted against frequency across the year
+date_counts <- df%>%
+    mutate(amount = as.integer(amount))%>%
+    mutate(date = month(date))%>%
+    group_by(date, entry)%>%
+    summarise(sum = sum(amount, na.rm=TRUE), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = sum, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Amount of Vouchers by month",
+       x = "Month",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r within_month_plot, echo=FALSE}
+# Voucher date plotted against frequency across a month
+date_counts <- df%>%
+    mutate(date = day(date))%>%
+    group_by(date, entry)%>%
+    summarise(count = n(), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = count, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Number of Vouchers within a month",
+       x = "Date",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r within_month_amount_plot, echo=FALSE}
+# Voucher date plotted against frequency across the year
+date_counts <- df%>%
+    mutate(amount = as.integer(amount))%>%
+    mutate(date = day(date))%>%
+    group_by(date, entry)%>%
+    summarise(sum = sum(amount, na.rm=TRUE), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = sum, color=entry)) +
+  geom_line() +
+  # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Amount of Vouchers within a month",
+       x = "Date",
+       y = "Frequency") +
+  theme_economist() + scale_fill_economist()
+```
+
+``` {r receipts_scheme_plot, echo=FALSE}
+# Receipts date by scheme plotted against frequency within a year
+date_counts <- df%>%
+    filter(entry == "Receipt")%>%
+    mutate(date = ymd(date))%>%
+    mutate(scheme = ifelse(str_detect(scheme, regex('finance commission', ignore_case=TRUE)), 'Finance Commission', scheme))%>%
+    mutate(scheme = case_when(
+        scheme == 'KENDU LEAF GRANT KL GRANT' ~ 'Other',
+        scheme == 'Sampoorna Gramin Rozgar Yojana' ~ 'Other',
+        scheme == 'Swachh Bharat Mission' ~ 'Other',
+        scheme == '4TH STATE FINANCE SCHEME' ~ 'Finance Commission',
+        TRUE ~ scheme
+      ))%>%
+    group_by(date, scheme)%>%
+    summarise(count = n(), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = count, color=scheme)) +
+    geom_line() +
+    # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+    labs(title = "Number of receipts across a year",
+        x = "Date",
+        y = "Frequency") +
+    theme_economist() + scale_fill_economist() +
+    theme(legend.text = element_text(size = 8),
+    legend.spacing.y = unit(0.05, 'cm'),
+    legend.spacing.x = unit(0.05, 'cm'))
+```
+
+``` {r receipts_scheme_amount_plot, echo=FALSE}
+# Receipts date by scheme plotted against frequency within a year
+date_counts <- df%>%
+    filter(entry == "Receipt")%>%
+    mutate(amount = as.integer(amount))%>%
+    mutate(date = ymd(date))%>%
+    mutate(scheme = ifelse(str_detect(scheme, regex('finance commission', ignore_case=TRUE)), 'Finance Commission', scheme))%>%
+    mutate(scheme = case_when(
+        scheme == 'KENDU LEAF GRANT KL GRANT' ~ 'Other',
+        scheme == 'Sampoorna Gramin Rozgar Yojana' ~ 'Other',
+        scheme == 'Swachh Bharat Mission' ~ 'Other',
+        scheme == '4TH STATE FINANCE SCHEME' ~ 'Finance Commission',
+        TRUE ~ scheme
+      ))%>%
+    group_by(date, scheme)%>%
+    summarise(sum = sum(amount, na.rm=TRUE), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = sum, color=scheme)) +
+    geom_line() +
+    # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+    labs(title = "Amount of receipts across a year",
+        x = "Date",
+        y = "Frequency") +
+    theme_economist() + scale_fill_economist() +
+    theme(legend.text = element_text(size = 8),
+    legend.spacing.y = unit(0.05, 'cm'),
+    legend.spacing.x = unit(0.05, 'cm'))
+```
+
+``` {r payments_scheme_plot, echo=FALSE}
+# Receipts date by scheme plotted against frequency within a year
+date_counts <- df%>%
+    filter(entry == "Payment")%>%
+    mutate(date = ymd(date))%>%
+    mutate(scheme = ifelse(str_detect(scheme, regex('finance commission', ignore_case=TRUE)), 'Finance Commission', scheme))%>%
+    mutate(scheme = case_when(
+        scheme == 'KENDU LEAF GRANT KL GRANT' ~ 'Other',
+        scheme == 'Sampoorna Gramin Rozgar Yojana' ~ 'Other',
+        scheme == 'Swachh Bharat Mission' ~ 'Other',
+        scheme == '4TH STATE FINANCE SCHEME' ~ 'Finance Commission',
+        TRUE ~ scheme
+      ))%>%
+    group_by(date, scheme)%>%
+    summarise(count = n(), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = count, color=scheme)) +
+    geom_line() +
+    # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+    labs(title = "Number of payments across a year",
+        x = "Date",
+        y = "Frequency") +
+    theme_economist() + scale_fill_economist() +
+    theme(legend.text = element_text(size = 8),
+    legend.spacing.y = unit(0.05, 'cm'),
+    legend.spacing.x = unit(0.05, 'cm'))
+```
+
+``` {r payments_scheme_amount_plot, echo=FALSE}
+# Receipts date by scheme plotted against frequency within a year
+date_counts <- df%>%
+    filter(entry == "Payment")%>%
+    mutate(amount = as.integer(amount))%>%
+    mutate(date = ymd(date))%>%
+    mutate(scheme = ifelse(str_detect(scheme, regex('finance commission', ignore_case=TRUE)), 'Finance Commission', scheme))%>%
+    mutate(scheme = case_when(
+        scheme == 'KENDU LEAF GRANT KL GRANT' ~ 'Other',
+        scheme == 'Sampoorna Gramin Rozgar Yojana' ~ 'Other',
+        scheme == 'Swachh Bharat Mission' ~ 'Other',
+        scheme == '4TH STATE FINANCE SCHEME' ~ 'Finance Commission',
+        TRUE ~ scheme
+      ))%>%
+    group_by(date, scheme)%>%
+    summarise(sum = sum(amount, na.rm=TRUE), .groups = 'drop')
+
+ggplot(date_counts, aes(x = date, y = sum, color=scheme)) +
+    geom_line() +
+    # geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+    labs(title = "Amount of payments across a year",
+        x = "Date",
+        y = "Frequency") +
+    theme_economist() + scale_fill_economist() +
+    theme(legend.text = element_text(size = 8),
+    legend.spacing.y = unit(0.05, 'cm'),
+    legend.spacing.x = unit(0.05, 'cm'))
+```
