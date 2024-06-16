@@ -1,5 +1,5 @@
 # GoI_scrapers
-Set of scrapers to grab political economy data from various GoI sites. Wrote these in the course of research work in Spring 2024.
+Set of scrapers to grab political economy data from various GoI sites. Wrote these in the course of research work in Spring and Summer 2024.
 
 ### nrega_scraper
 Grabs monthly work demand pattern data at the village level from https://nreganarep.nic.in
@@ -16,3 +16,12 @@ Given the static link to each non-coal mining project's main EC page, grabs all 
 
 ### ec_parivesh_scraper
 Given the proposal number of each non-coal mining project, grab all information about it available at https://parivesh.nic.in/
+
+### ec_form2_parser
+Extract useful information from the documents downloaded by doc_scraper, and create a collated dataset on project Environmental Clearances.
+
+### voucher_scraper
+Given the district and village codes for each district in a state, grab basic information on all the money paid and receivied by Gram Panchayats under various government schemes, from https://egramswaraj.gov.in/
+
+### voucher_details_scraper
+Given the voucher information for each Gram Panchayat payment and receipt, grab its details from https://egramswaraj.gov.in/ and collate a dataset
