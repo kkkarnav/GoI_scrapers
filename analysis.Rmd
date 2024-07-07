@@ -13,64 +13,45 @@ library(lubridate)
 library(sf)
 library(kableExtra)
 library(ggthemes)
+library(purrr)
+library(readr)
 sf_use_s2(FALSE)
 ```
 
 ```{r data, include=FALSE, eval=TRUE}
-# Load the two compiled datasets, one from the main pages and one from Parivesh/docs
-gujarat <- read.csv("../polsci/Gujarat/Gujarat_ec_pdf_links.csv")
-kerala <- read.csv("../polsci/Kerala/Kerala_ec_pdf_links.csv")
-maharashtra <- read.csv("../polsci/Maharashtra/Maharashtra_ec_pdf_links.csv")
-madhya_pradesh <- read.csv("../polsci/Madhya_Pradesh/Madhya_Pradesh_ec_pdf_links.csv")
-rajasthan <- read.csv("../polsci/Rajasthan/Rajasthan_ec_pdf_links.csv")
-uttarakhand <- read.csv("../polsci/Uttarakhand/Uttarakhand_ec_pdf_links.csv")
-uttar_pradesh <- read.csv("../polsci/Uttar_Pradesh/Uttar_Pradesh_ec_pdf_links.csv")
-andhra_pradesh <- read.csv("../polsci/Andhra_Pradesh/Andhra_Pradesh_ec_pdf_links.csv")
-jharkhand <- read.csv("../polsci/Jharkhand/Jharkhand_ec_pdf_links.csv")
+# Load the three compiled datasets
+# one from the main pages, one from Parivesh/docs, and one from the timeline page
+states <- c("Andhra_Pradesh", "Bihar", "Chhattisgarh", "Gujarat", "Haryana", "Himachal_Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya_Pradesh", "Maharashtra", "Orissa", "Rajasthan", "Uttar_Pradesh", "Uttarakhand")
+csvs <- c("_ec_pdf_links.csv", "_ec_compiled_data.csv", "_ec_timelinedata.csv")
 
-gujarat_p <- read.csv("../polsci/Gujarat/Gujarat_ec_compiled_data.csv")
-kerala_p <- read.csv("../polsci/Kerala/Kerala_ec_compiled_data.csv")
-maharashtra_p <- read.csv("../polsci/Maharashtra/Maharashtra_ec_compiled_data.csv")
-madhya_pradesh_p <- read.csv("../polsci/Madhya_Pradesh/Madhya_Pradesh_ec_compiled_data.csv")
-rajasthan_p <- read.csv("../polsci/Rajasthan/Rajasthan_ec_compiled_data.csv")
-uttarakhand_p <- read.csv("../polsci/Uttarakhand/Uttarakhand_ec_compiled_data.csv")
-uttar_pradesh_p <- read.csv("../polsci/Uttar_Pradesh/Uttar_Pradesh_ec_compiled_data.csv")
-andhra_pradesh_p <- read.csv("../polsci/Andhra_Pradesh/Andhra_Pradesh_ec_compiled_data.csv")
-jharkhand_p <- read.csv("../polsci/Jharkhand/Jharkhand_ec_compiled_data.csv")
+read_csvs <- function(csv_type) {
+  file_paths <- paste0("../polsci/", states, "/", states, csv_type)
+  file_paths %>% 
+    map_dfr(~read_csv(.x) %>%
+              mutate(across(everything(), as.character)))
+}
 
-gujarat_t <- read.csv("../polsci/Gujarat/Gujarat_ec_timelinedata.csv")
-kerala_t <- read.csv("../polsci/Kerala/Kerala_ec_timelinedata.csv")
-maharashtra_t <- read.csv("../polsci/Maharashtra/Maharashtra_ec_timelinedata_total.csv")
-madhya_pradesh_t <- read.csv("../polsci/Madhya_Pradesh/Madhya_Pradesh_ec_timelinedata.csv")
-rajasthan_t <- read.csv("../polsci/Rajasthan/Rajasthan_ec_timelinedata.csv")
-uttarakhand_t <- read.csv("../polsci/Uttarakhand/Uttarakhand_ec_timelinedata.csv")
-uttar_pradesh_t <- read.csv("../polsci/Uttar_Pradesh/Uttar_Pradesh_ec_timelinedata.csv")
-andhra_pradesh_t <- read.csv("../polsci/Andhra_Pradesh/Andhra_Pradesh_ec_timelinedata.csv")
-jharkhand_t <- read.csv("../polsci/Jharkhand/Jharkhand_ec_timelinedata.csv")
+data <- read_csvs(csvs[1])
+parivesh <- read_csvs(csvs[2])
+timeline <- read_csvs(csvs[3])
 
 districts <- st_read("../polsci/Shape_India/DISTRICT_BOUNDARY.shp")
-```
-
-```{r data_merge, include=FALSE, eval=TRUE}
-data <- plyr::rbind.fill(list(gujarat, kerala, maharashtra, madhya_pradesh, rajasthan, uttarakhand, uttar_pradesh, andhra_pradesh, jharkhand))
-parivesh <- plyr::rbind.fill(list(gujarat_p, kerala_p, maharashtra_p, madhya_pradesh_p, rajasthan_p, uttarakhand_p, uttar_pradesh_p, andhra_pradesh_p, jharkhand_p))
-timeline <- plyr::rbind.fill(list(gujarat_t, kerala_t, maharashtra_t, madhya_pradesh_t, rajasthan_t, uttarakhand_t, uttar_pradesh_t, andhra_pradesh_t, jharkhand_t))
 ```
 
 ```{r data_table, echo=FALSE}
 # Convert the dates to datetime format
 data <- data%>%
-  dplyr::select(Proposal.No., Proposal.Name, State, District, Tehsil, Category, Company, Status, pid)%>%
-  rename(proposalnum = Proposal.No., name = Proposal.Name)
+  dplyr::select("Proposal.No.", "Proposal Name", State, District, Tehsil, Category, Company, Status, pid)%>%
+  rename(proposalnum = "Proposal.No.", name = "Proposal Name")
 
 # Merge the maindata and the Parivesh and timeline data
 data <- inner_join(data, parivesh, by = c("pid" = "pid", "proposalnum" = "proposal_num"))
-data <- left_join(data, timeline, by = c("proposalnum" = "Proposal.Number"))
+data <- left_join(data, timeline, by = c("proposalnum" = "Proposal Number"))
 
-# Clean and calculate the delay between the two dates in the df
+# Clean and calculate the delay between the two main dates in the df
 data <- data%>%
-  dplyr::select(proposalnum, name, State, District, Tehsil, Category, Company, Status, pid, applicant_pincode, applicant_tehsil, applicant_village, caf_id, category, ec_id, is_parivesh, lat_north, lat_south, long_east, long_west, major_activity, minor_activity, organization, organization_status, parivesh_id, product, product_id, quantity, quantity_unit, sw_num, transport, Project.Sector, "Date.of.Submission", "EC.Letter.Uploaded.On.EC.Granted")%>%
-  rename("submission" = "Date.of.Submission", "granted" = "EC.Letter.Uploaded.On.EC.Granted")%>%
+  dplyr::select(proposalnum, name, State, District, Tehsil, Category, Company, Status, pid, applicant_pincode, applicant_tehsil, applicant_village, caf_id, category, ec_id, is_parivesh, lat_north, lat_south, long_east, long_west, major_activity, minor_activity, organization, organization_status, parivesh_id, product, product_id, quantity, quantity_unit, sw_num, transport, "Project Sector", "Date of Submission", "EC Letter Uploaded On/EC Granted")%>%
+  rename("submission" = "Date of Submission", "granted" = "EC Letter Uploaded On/EC Granted")%>%
   mutate(date1 = dmy(submission), date2 = dmy(granted))%>%
   filter(!is.na(date1))%>%
   filter(!is.na(date2))%>%
@@ -81,34 +62,35 @@ data <- data%>%
 ```
 
 ```{r parivesh_table, echo=FALSE}
-kable(head(data), caption="7 States Parivesh data")
+kable(head(data), caption="State Projects data")
 kable(table(data["State"]), caption="Number of projects by state")
-
-raj_count = nrow(rajasthan)
-kable(raj_count)
-raj_parse = nrow(rajasthan_p)
-kable(raj_parse)
 ```
 
-``` {r dates_plot, echo=FALSE}
-# Submission date plotted against grant date
-ggplot(data, aes(x = date1, y = date2)) +
+``` {r number_plot, eval=FALSE, echo=FALSE}
+counts <- data%>%
+    mutate(year = year(date1))%>%
+    group_by(year)%>%
+    summarize(year_count = count())
+
+ggplot(counts, aes(x = year, y = year_count)) +
   geom_line() +
   geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
-  labs(title = "Date 1 vs Date 2 by project") +
-  xlab("Date 1") +
-  ylab("Date 2") +
+  labs(title = "Number of project submissions by year") +
+  xlab("Year") +
+  ylab("Count") +
   theme_economist() + scale_fill_economist()
-```
 
-``` {r delay_date_plot, echo=FALSE}
-# Project delay over time
-ggplot(data, aes(x = date2, y = delay)) +
+counts <- data%>%
+    mutate(year = year(date2))%>%
+    group_by(year)%>%
+    summarize(year_count = count())
+
+ggplot(counts, aes(x = year, y = year_count)) +
   geom_line() +
-  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = TRUE, color = "skyblue") + 
-  labs(title = "Delay by project over time") +
-  xlab("Date 1") +
-  ylab("Delay (days)") +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^3), se = TRUE, color = "skyblue") + 
+  labs(title = "Number of project approvals by year") +
+  xlab("Year") +
+  ylab("Count") +
   theme_economist() + scale_fill_economist()
 ```
 
@@ -121,21 +103,28 @@ ggplot(data, aes(x=delay)) +
   theme_economist() + scale_fill_economist()
 ```
 
-``` {r yearly_delay_plot, echo=FALSE}
-# Aggregate by year
-means <- data%>%
-  mutate(year = year(date2))%>%
-  group_by(year)%>%
-  mutate(mean_delay = mean(delay))%>%
-  mutate(count = n())
+``` {r year1_boxplot, echo=FALSE}
+# Plot a boxplot of total delay by year of submission
+data <- data%>%
+    mutate(year = year(date1))
 
-ggplot(means, aes(x=year, y=mean_delay)) +
-  geom_line() +
-  geom_point(aes(size=count)) +
-  labs(title = "Mean delay across years") +
+ggplot(data, aes(x = factor(year), y = delay)) +
+  geom_boxplot() +
+  labs(title = "Median Delay by Year of Submission") +
   xlab("Year") +
-  ylab("Average Delay (days)") +
-  theme_economist() + scale_fill_economist()
+  ylab("Delay (days)")
+```
+
+``` {r year2_boxplot, echo=FALSE}
+# Plot a boxplot of total delay by year of approval
+data <- data%>%
+    mutate(year = year(date2))
+
+ggplot(data, aes(x = factor(year), y = delay)) +
+  geom_boxplot() +
+  labs(title = "Median Delay by Year of Approval") +
+  xlab("Year") +
+  ylab("Delay (days)")
 ```
 
 ``` {r seasonal_delay_plot, echo=FALSE}
@@ -159,13 +148,14 @@ ggplot(means) +
   geom_point(aes(x=month1, y=mean_delay1, size=count1, color="date 1")) +
   geom_line(aes(x=month2, y=mean_delay2)) +
   geom_point(aes(x=month2, y=mean_delay2, size=count2, color="date 2")) +
-  labs(title = "Mean delay across the year") +
+  labs(title = "Mean delay across one year") +
   xlab("Month") +
   ylab("Average Delay (days)") +
   theme_economist() + scale_fill_economist()
 ```
 
 ``` {r state_boxplot, echo=FALSE}
+# Plot a boxplot of total delays by state
 state_table <- data %>%
   group_by(State)%>%
   summarise(median_delay=median(delay), na.rm=TRUE)%>%
@@ -181,7 +171,7 @@ ggplot(data, aes(x = factor(State), y = delay)) +
   theme(axis.text.x = element_text(angle = 45))
 
 only_states <- data%>%
-    filter(State %in% c("Gujarat", "Maharashtra", "Kerala", "Madhya Pradesh", "Rajasthan", "Uttarakhand", "Uttar Pradesh", "Andhra Pradesh", "Jharkhand"))
+    filter(State %in% str_replace_all(states, "_", " "))
 
 ggplot(only_states, aes(x = factor(State), y = delay)) +
   geom_boxplot() +
@@ -287,7 +277,7 @@ data_sf <- st_as_sf(data, coords = c("longitude", "latitude"), crs = 4326)
 
 ```
 
-```{r latlong_plot, echo=FALSE}
+```{r latlong_plots, echo=FALSE}
 # Latitude and Longitude coordinates
 ggplot(data) +
   geom_point(aes(x=longitude, y=latitude, color=District)) +
@@ -300,16 +290,18 @@ ggplot(data) +
 # Coordinates with India map
 ggplot() +
   geom_sf(data = districts, linetype=1) +
-  geom_sf(data = data_sf, aes(color=delay)) +
-  scale_fill_viridis_c(option = "viridis") +
-  ggtitle(label = "Projects by Delay")
-
-ggplot() +
-  geom_sf(data = districts, linetype=1) +
   geom_sf(data = data_sf, aes(color=District)) +
   scale_fill_viridis_c(option = "viridis") +
   ggtitle(label = "Projects by District") +
   theme(legend.position = "none")
+```
+
+``` {r latlong_feature_plots, echo=FALSE}
+ggplot() +
+  geom_sf(data = districts, linetype=1) +
+  geom_sf(data = data_sf, aes(color=delay)) +
+  scale_fill_viridis_c(option = "viridis") +
+  ggtitle(label = "Projects by Delay")
 
 ggplot() +
   geom_sf(data = districts, linetype=1) +
@@ -317,21 +309,31 @@ ggplot() +
   scale_fill_viridis_c(option = "viridis") +
   ggtitle(label = "Projects by Organization Status") +
   theme(legend.position = "none")
-```
 
-```{r latlongyear_plot, eval=FALSE}
-# By year
-ggplot() +
-  geom_sf(data = districts, linetype=1) +
-  geom_sf(data = data_sf, aes(color=District)) +
-  facet_wrap(~year) +
-  scale_fill_viridis_c(option = "magma") +
-  ggtitle(label = "Projects by District")
+data_sf %>%
+  count(organization_status, sort = TRUE) %>%
+  top_n(10, n)
 
 ggplot() +
   geom_sf(data = districts, linetype=1) +
-  geom_sf(data = data_sf, aes(color=delay)) +
-  facet_wrap(~year) +
-  scale_fill_viridis_c(option = "magma") +
-  ggtitle(label = "Projects by District")
+  geom_sf(data = data_sf, aes(color=`Project Sector`)) +
+  scale_fill_viridis_c(option = "viridis") +
+  ggtitle(label = "Projects by Sector") +
+  theme(legend.position = "none")
+
+data_sf %>%
+  count(`Project Sector`, sort = TRUE) %>%
+  top_n(10, n)
+
+ggplot() +
+  geom_sf(data = districts, linetype=1) +
+  geom_sf(data = data_sf, aes(color=product)) +
+  scale_fill_viridis_c(option = "viridis") +
+  ggtitle(label = "Projects by Product") +
+  theme(legend.position = "none")
+
+data_sf %>%
+  count(product, sort = TRUE) %>%
+  top_n(10, n)
+
 ```
