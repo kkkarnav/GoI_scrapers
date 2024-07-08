@@ -20,6 +20,9 @@ Given the proposal number of each non-coal mining project, grab all information 
 ### ec_form2_parser
 Extract useful information from the documents downloaded by doc_scraper, and create a collated dataset on project Environmental Clearances.
 
+### ec_kml_scraper
+Extract information on and download Google Earth KML files for the collated Environmental Clearance projects.
+
 ### voucher_scraper
 Given the district and village codes for each district in a state, grab basic information on all the money paid and receivied by Gram Panchayats under various government schemes, from https://egramswaraj.gov.in/
 
