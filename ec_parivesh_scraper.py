@@ -91,7 +91,7 @@ def parse_caf_json(state, pid, caf_json):
     caf_data = json.loads(caf_json)["data"]
 
     # Store the json to file
-    with open(f"../{state}/pdfs/{pid}_parivesh.json", "w") as file:
+    with open(f"D:/assorted/Dropbox/Environment_Clearance/{state}/pdfs/{pid}_parivesh.json", "w") as file:
         json.dump(caf_data, file)
 
     # Some projects don't have product details included
@@ -172,8 +172,8 @@ def parse_caf_json(state, pid, caf_json):
 def scrape_parivesh_data(session, state):
 
     # Create the path to store the Parivesh data to
-    output_path = f"../{state}/{state}_ec_parivesh_data.csv"
-    df = pd.read_csv(f"../{state}/{state}_ec_pdf_links.csv")
+    output_path = f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_parivesh_data.csv"
+    df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_pdf_links.csv")
 
     # Scrape Parivesh for each proposal number and add it to the df
     parivesh_df = df.progress_apply(lambda row: parse_caf_json(state, row["pid"], grab_caf_data(session, row["Proposal.No."])), axis=1)
@@ -191,7 +191,7 @@ def scrape_parivesh_data(session, state):
 
 if __name__ == "__main__":
 
-    state_name = "West_Bengal"
+    state_name = "Telangana"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

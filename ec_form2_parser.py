@@ -153,7 +153,7 @@ def parse_jv_html(soup, pid):
 
 def parse_form2_html(state, pid):
     try:
-        file_name = f"../{state}/pdfs/{pid}_Form2.html"
+        file_name = f"D:/assorted/Dropbox/Environment_Clearance/{state}/pdfs/{pid}_Form2.html"
         with open(file_name, "r", encoding="utf8") as html_file:
             html = html_file.read()
         soup = BeautifulSoup(html, 'html.parser')
@@ -253,12 +253,12 @@ def parse_form2_html(state, pid):
 
 
 def construct_form2_df(state):
-    # Create the path to store the Parivesh data to
-    output_path = f"../{state}/{state}_ec_form2_data.csv"
+    # Create the path to store the Form 2 data to
+    output_path = f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_form2_data.csv"
     if os.path.isfile(output_path):
         return pd.read_csv(output_path)
 
-    df = pd.read_csv(f"../{state}/{state}_ec_pdf_links.csv")
+    df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_pdf_links.csv")
     form2_df = df.progress_apply(lambda row: parse_form2_html(state, row["pid"]), axis=1)
     form2_df = pd.json_normalize(form2_df)
 
@@ -267,8 +267,8 @@ def construct_form2_df(state):
 
 
 def merge_sources(state, output_path):
-    p_df = pd.read_csv(f"../{state}/{state}_ec_parivesh_data.csv")
-    f_df = pd.read_csv(f"../{state}/{state}_ec_form2_data.csv")
+    p_df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_parivesh_data.csv")
+    f_df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_form2_data.csv")
 
     compiled_df = p_df.apply(lambda row: row if row["is_parivesh"] == 1 else f_df.loc[row.name], axis=1)
     compiled_df.loc[compiled_df["is_parivesh"] != 1, "is_parivesh"] = 0
@@ -278,8 +278,8 @@ def merge_sources(state, output_path):
 
 
 if __name__ == "__main__":
-    state_name = "Andhra_Pradesh"
-    path = f"../{state_name}/{state_name}_ec_compiled_data.csv"
+    state_name = "Himachal_Pradesh"
+    path = f"D:/assorted/Dropbox/Environment_Clearance/{state_name}/{state_name}_ec_compiled_data.csv"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

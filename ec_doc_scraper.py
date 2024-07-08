@@ -34,22 +34,26 @@ def grab_project_pdf_links(main_link):
         print(f"Failed to load page: {main_link}, error: {e}")
         return ""
 
-    # Extract the document links
-    soup = BeautifulSoup(response.content, 'html.parser')
+    try:
+        # Extract the document links
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    # Find the main table
-    target_table = None
-    for table in soup.find_all('table'):
-        if "Attached Files" in str(table):
-            target_table = table
-            break
+        # Find the main table
+        target_table = None
+        for table in soup.find_all('table'):
+            if "Attached Files" in str(table):
+                target_table = table
+                break
 
-    # Grab and store each document name and link
-    cells = target_table.find_all('td')
-    for cell in cells[-2].find("span").find_all("span", recursive=False):
-        file_type = cell.find("span").find("a")["title"] if cell.find("span") else cell.find("a")["title"]
-        file_link = cell.find("span").find("a")["href"] if cell.find("span") else cell.find("a")["href"]
-        file_links[file_type] = file_link
+        # Grab and store each document name and link
+        cells = target_table.find_all('td')
+        for cell in cells[-2].find("span").find_all("span", recursive=False):
+            file_type = cell.find("span").find("a")["title"] if cell.find("span") else cell.find("a")["title"]
+            file_link = cell.find("span").find("a")["href"] if cell.find("span") else cell.find("a")["href"]
+            file_links[file_type] = file_link
+    except Exception as e:
+        print(f"Failed to parse page: {main_link}, error: {e}")
+        return ""
 
     return file_links
 
@@ -58,12 +62,12 @@ def grab_project_pdf_links(main_link):
 def generate_pdf_links(state):
 
     # Exit if pdf_links has already been generated
-    output_path = f"../{state}/{state}_ec_pdf_links.csv"
+    output_path = f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_pdf_links.csv"
     if os.path.isfile(output_path):
         return pd.read_csv(output_path)
 
     # Load maindata.csv
-    main_df = pd.read_csv(f"../{state}/{state}_ec_maindata.csv")
+    main_df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_maindata.csv")
     main_df.rename({"Unnamed: 0": "index"}, axis=1, inplace=True)
 
     # Add a column with each project's pid
@@ -113,7 +117,7 @@ def download_project_pdfs(project, directory, column_name):
 def download_all_pdfs(df, state):
 
     # Find or create the folder to store the pdfs to
-    output_directory = f"../{state}/pdfs/"
+    output_directory = f"D:/assorted/Dropbox/Environment_Clearance/{state}/pdfs/"
     if not os.path.exists(output_directory):
         os.mkdir(output_directory)
 
@@ -126,7 +130,7 @@ def download_all_pdfs(df, state):
 
 if __name__ == "__main__":
 
-    state_name = "West_Bengal"
+    state_name = "Haryana"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

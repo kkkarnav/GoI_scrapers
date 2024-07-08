@@ -25,7 +25,7 @@ states <- c("Andhra_Pradesh", "Bihar", "Chhattisgarh", "Gujarat", "Haryana", "Hi
 csvs <- c("_ec_pdf_links.csv", "_ec_compiled_data.csv", "_ec_timelinedata.csv")
 
 read_csvs <- function(csv_type) {
-  file_paths <- paste0("../polsci/", states, "/", states, csv_type)
+  file_paths <- paste0("./", states, "/", states, csv_type)
   file_paths %>% 
     map_dfr(~read_csv(.x) %>%
               mutate(across(everything(), as.character)))
@@ -35,7 +35,7 @@ data <- read_csvs(csvs[1])
 parivesh <- read_csvs(csvs[2])
 timeline <- read_csvs(csvs[3])
 
-districts <- st_read("../polsci/Shape_India/DISTRICT_BOUNDARY.shp")
+districts <- st_read("./Shape_India/DISTRICT_BOUNDARY.shp")
 ```
 
 ```{r data_table, echo=FALSE}
