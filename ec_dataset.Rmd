@@ -21,7 +21,7 @@ sf_use_s2(FALSE)
 ```{r data, include=FALSE, eval=TRUE}
 # Load the three compiled datasets
 # one from the main pages, one from Parivesh/docs, and one from the timeline page
-states <- c("Andhra_Pradesh", "Bihar", "Chhattisgarh", "Gujarat", "Haryana", "Himachal_Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya_Pradesh", "Maharashtra", "Orissa", "Punjab", "Rajasthan", "Tamil_Nadu", "Telangana", "Uttar_Pradesh", "Uttarakhand")
+states <- c("Andhra_Pradesh", "Bihar", "Chhattisgarh", "Gujarat", "Haryana", "Himachal_Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya_Pradesh", "Maharashtra", "Orissa", "Punjab", "Rajasthan", "Tamil_Nadu", "Telangana", "Uttar_Pradesh", "Uttarakhand", "West_Bengal")
 csvs <- c("_ec_pdf_links.csv", "_ec_compiled_data.csv", "_ec_timelinedata.csv")
 
 read_csvs <- function(csv_type) {
@@ -51,14 +51,16 @@ data <- left_join(data, timeline, by = c("proposalnum" = "Proposal Number"))
 # Clean and calculate the delay between the two main dates in the df
 data <- data%>%
   dplyr::select(proposalnum, name, State, District, Tehsil, Category, Company, Status, pid, applicant_pincode, applicant_tehsil, applicant_village, caf_id, category, ec_id, is_parivesh, lat_north, lat_south, long_east, long_west, major_activity, minor_activity, organization, organization_status, parivesh_id, product, product_id, quantity, quantity_unit, sw_num, transport, "Project Sector", "Date of Submission", "EC Letter Uploaded On/EC Granted")%>%
-  rename("submission" = "Date of Submission", "granted" = "EC Letter Uploaded On/EC Granted")%>%
+  rename("submission" = "Date of Submission", "granted" = "EC Letter Uploaded On/EC Granted", proj_category = "category")%>%
   mutate(date1 = dmy(submission), date2 = dmy(granted))%>%
   filter(!is.na(date1))%>%
   filter(!is.na(date2))%>%
   mutate(delay = date2 - date1)%>%
   filter(delay >= 0)%>%
   filter(delay < 2400)%>%
-  filter(State != "")
+  filter(Category=='Non-Coal Mining')%>%
+  filter(Status %in% c("EC Granted","EC Granted - Processed offline"))
+
 ```
 
 ```{r parivesh_table, echo=FALSE}
@@ -127,7 +129,7 @@ ggplot(data, aes(x = factor(year), y = delay)) +
   ylab("Delay (days)")
 ```
 
-``` {r seasonal_delay_plot, echo=FALSE}
+``` {r seasonal_delay_plot, eval=FALSE, echo=FALSE}
 # Aggregate by month
 means <- data%>%
   filter(date1 <= ymd('2020-03-01') | date1 >= ymd('2021-06-30'))%>%
@@ -274,10 +276,13 @@ data <- data%>%
   filter(longitude >= 68 & longitude <= 98)
 
 data_sf <- st_as_sf(data, coords = c("longitude", "latitude"), crs = 4326)
+kable(head(data_sf))
+kable(nrow(data_sf))
+st_write(data_sf, "./datasets/ec_dataset.shp", delete_dsn=TRUE)
 
 ```
 
-```{r latlong_plots, echo=FALSE}
+```{r latlong_plots, eval=FALSE, echo=FALSE}
 # Latitude and Longitude coordinates
 ggplot(data) +
   geom_point(aes(x=longitude, y=latitude, color=District)) +
@@ -303,7 +308,7 @@ ggplot() +
   theme(legend.position = "none")
 ```
 
-``` {r latlong_feature_plots, echo=FALSE}
+``` {r latlong_feature_plots, eval=FALSE, echo=FALSE}
 ggplot() +
   geom_sf(data = districts, linetype=1) +
   geom_sf(data = data_sf, aes(color=delay)) +
