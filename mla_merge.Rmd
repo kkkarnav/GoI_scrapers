@@ -1,0 +1,119 @@
+---
+title: "EC data timeline & location data"
+author: "Karnav Popat"
+date: "29/05/2024"
+output: html_document
+---
+
+``` {r setup, include=FALSE, eval=TRUE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, eval = TRUE)
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+library(sf)
+library(fuzzyjoin)
+library(kableExtra)
+library(ggthemes)
+sf_use_s2(FALSE)
+```
+
+``` {r data_constituency_merge, eval=FALSE}
+ec_dataset <- st_read("./datasets/ec_dataset.shp")
+assemblies <- st_read("./datasets/india_assemblies.shp")
+const_merged <- st_join(ec_dataset, assemblies)
+st_write(const_merged, './datasets/const_merged.shp', delete_dsn=TRUE)
+```
+
+``` {r data, include=FALSE, eval=FALSE}
+# Load the three compiled datasets
+# one from the main pages, one from Parivesh/docs, and one from the timeline page
+df <- st_read("./datasets/const_merged.shp")
+df <- df %>%
+    select(-path, -layer, -caf_id, -ec_id, -prvsh_d, -sw_num, -submssn, -granted, -is_prvs, -prj_ctg, -applcnt_p, -applcnt_t, -applcnt_v, -orgnztn, -prdct_d, -quantty, -qntty_n, -trnsprt, -mjr_ctv, -mnr_ctv, -pc, -pc_name, -lt_nrth, -lat_sth, -long_st, -lng_wst, -Company, -year, -state_2)%>%
+    mutate_at(vars("ac_name", "State"), tolower)%>%
+    mutate(delay = date2 - date1)%>%
+    drop_na("ac", "ac_name", "State") %>%
+    mutate_at(vars("ac_name", "State"), tolower)%>%
+    mutate(State = gsub(" ", "_", State))%>%
+    mutate(State = gsub("orissa", "odisha", State))
+
+tcpd <- read.csv("../elections/project/data/All_States_AE.csv")
+tcpd <- tcpd %>%
+    filter(Year > 2010)%>%
+    filter(last_poll == TRUE)%>%
+    filter(Deposit_Lost == "no")%>%
+    select(-DelimID, -Poll_No, -Position, -Valid_Votes, -Electors, -District_Name, -Sub_Region, -N_Cand, -Deposit_Lost, -Party_Type_TCPD, -Party_ID, -last_poll, -Last_Party_ID, -Last_Constituency_Name, -Same_Constituency, -MyNeta_education, -TCPD_Prof_Main, -TCPD_Prof_Main_Desc, -TCPD_Prof_Second, -TCPD_Prof_Second_Desc, -Election_Type, -No_Terms, -Same_Party, -Turncoat, -Incumbent, -Recontest, -Contested, -Last_Party, -pid)%>%
+    drop_na("Constituency_No", "Constituency_Name", "State_Name")%>%
+    mutate_at(vars("Constituency_Name", "State_Name"), tolower)%>%
+    mutate(State_Name = gsub(" ", "_", State_Name))%>%
+    mutate(State_Name = gsub("orissa", "odisha", State_Name))
+```
+
+``` {r data_table, echo=FALSE, eval=FALSE}
+kable(head(df), caption="State Projects data")
+kable(nrow(df))
+kable(n_distinct(df$pid))
+
+kable(head(tcpd))
+kable(nrow(tcpd))
+```
+
+``` {r merge, eval=FALSE}
+merged <- left_join(df, tcpd, by = c("ac_name" = "Constituency_Name", "State" = "State_Name"))
+kable(head(merged))
+kable(nrow(merged))
+kable(n_distinct(merged$pid))
+```
+
+``` {r fuzzymerge, include=FALSE, eval=FALSE}
+df <- stringdist_join(df, tcpd, mode="inner", distance_col="distance", by = c("ac" = "Constituency_No", "ac_name" = "Constituency_Name", "State" = "State_Name"))%>%
+  group_by("State", "ac", "ac_name")%>%
+  slice_min(order_by=distance, n=1)%>%
+  ungroup()
+kable(head(df))
+kable(nrow(df))
+```
+
+``` {r time_filter, eval=FALSE}
+df <- merged %>%
+    mutate(year1 = year(date1))%>%
+    mutate(year2 = year(date2))
+
+kable(head(df))
+kable(nrow(df))
+kable(n_distinct(df$pid))
+# kable(table(df))
+
+st_write(df, './datasets/mla_merged.shp', delete_dsn=TRUE)
+```
+
+``` {r merged_data, echo=FALSE, eval=TRUE}
+df <- st_read("./datasets/mla_merged.shp")
+const <- st_read("../elections/project/data/india_assemblies.shp")
+kable(head(df))
+kable(nrow(df))
+kable(n_distinct(df$pid))
+```
+
+
+``` {r delay, eval=TRUE}
+df <- df%>%
+    mutate(delay = date2 - date1)%>%
+    mutate(election = make_date(Year, month, 15))
+```
+
+``` {r dateplot, eval=TRUE}
+ggplot() +
+  geom_sf(data = const, linetype=1) +
+  geom_sf(data = df, aes(color=delay)) +
+  scale_fill_viridis_c(option = "viridis") +
+  ggtitle(label = "Projects by Delay") +
+  theme(legend.position = "none")
+
+ggplot() +
+  geom_sf(data = const, linetype=1) +
+  geom_sf(data = df, aes(color=election)) +
+  scale_fill_viridis_c(option = "viridis") +
+  ggtitle(label = "Projects by Election Date") +
+  theme(legend.position = "none")
+```
