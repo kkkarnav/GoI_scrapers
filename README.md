@@ -8,8 +8,6 @@ Set of scrapers to grab political economy data from various GoI sites. Wrote the
      - As part of an upcoming research paper, collate and analyse a dataset of industrial projects across India and their environmental clearance processes
  - ##### voucher_analysis.Rmd
      - As part of an upcoming research paper, collate and analyse a dataset of income and expenditure of Gram Panchayats across Orissa
- - ##### name_classifiers
-     - Classifiers to assign gender/religion/caste/tribe values to Indian names
 
 ### nrega/ (from https://nreganarep.nic.in)
 
@@ -51,3 +49,15 @@ Set of scrapers to grab political economy data from various GoI sites. Wrote the
      - Given a merged raster, extract the GHS values into an overlapping cities and towns shapefile
  - ##### copernicus_vector_visualize
      - Given a populated GHS shapefile, process and visualize the district/subdistrict/ULB polygons
+  
+### ULB/
+
+ - ##### ulb_budgets
+     - Take a series of PDF files containing municipal (urban local body) budget and expenditure data for each year and extract the topline amounts for the year into a csv
+ - ##### ulb_ghsl_correlate
+     - Merge the ULB budget data and the GHSL Copernicus data for Odisha to correlate whether higher municipal budgets are linked with higher growth (~no)
+
+### SECC/
+
+ - ##### name_classifiers
+     - Classifiers to assign gender/caste/tribe values to Indian names
