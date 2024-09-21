@@ -98,4 +98,5 @@ if __name__ == "__main__":
     print(df[["tv_name", "d_name", "year", "_median", "_median_buffer", "_growth", "_growth_buffer", "Expenditure"]])
 
     sns.lmplot(x="_growth", y="Expenditure", data=df)
-    plt.show()
+    plt.savefig(f"{GHSL_DIR}/images/ghsl_budget_correlate.png")
+    plt.clf()
