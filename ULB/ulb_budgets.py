@@ -6,8 +6,7 @@ import pandas as pd
 from pypdf import PdfReader
 from pprint import pprint
 from tqdm import tqdm
-import random
-import json
+import pymupdf
 
 tqdm.pandas()
 warnings.filterwarnings("ignore")
@@ -46,14 +45,65 @@ def parse_one_pdf(file_name, read_pdf):
     return budget
 
 
+def read_details(file_name, read_pdf):
+
+    budget = []
+
+    for index, page in enumerate(read_pdf):
+
+        text = page.get_text().replace("\n", "")
+        if "PARA: 4 FINANCIAL POSITION" in text:
+
+            if "GRANDTOTAL" in text or "GRAND TOTAL" in text:
+                text = text.replace("GRAND TOTAL", "GRANDTOTAL").replace("Details of Closing Balance and Comments", "Comments")
+            else:
+                text = read_pdf[index + 1].get_text().replace("\n", "").replace("GRAND TOTAL", "GRANDTOTAL").replace("Details of Closing Balance and Comments", "Comments")
+                index += 1
+
+            tables = page.find_tables()
+
+            found_correct_table = 0
+            for table in tables:
+
+                for name in table.header.names:
+                    formatted_name = str(name).replace("_", "").replace("\n", "")
+                    if "closingbalance" in formatted_name.lower():
+                        found_correct_table = 1
+                        break
+
+                if found_correct_table == 1:
+                    break
+
+            if found_correct_table == 0:
+                print(f"Couldn't find the correct table on page {index}")
+                return
+
+            try:
+                df = table.to_pandas().replace({"\n": ""}, regex=True)
+                print(df.iloc[-1])
+                budget.append(df)
+            except:
+                print(f"Couldn't find the correct table on page {index}")
+                continue
+
+        return budget
+
+
 def parse_one_municipality(path):
 
     municipality_budgets = []
+    municipality_budget_details = []
 
     for file_name in tqdm(os.listdir(path)):
 
+        if ".pdf" not in file_name:
+            continue
+
         reader = PdfReader(path + file_name)
         municipality_budgets.append(parse_one_pdf(file_name, reader))
+
+        reader2 = pymupdf.open(path + file_name)
+        municipality_budget_details.append(read_details(file_name, reader2))
 
     df = pd.DataFrame(municipality_budgets)
     pdf_column = df.pop("PDF Number")
