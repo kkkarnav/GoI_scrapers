@@ -61,6 +61,11 @@ def parse_form1_html(soup, pid):
     except:
         pass
 
+    try:
+        prow["kml_link"] = [a['href'] for a in soup.find_all('a', href=True) if "download.aspx" in a['href'] and ".kml" in a['href']][0]
+    except:
+        pass
+
     return prow
 
 
@@ -145,6 +150,11 @@ def parse_jv_html(soup, pid):
         prow["quantity"] = product_table.find_all('tr')[2].find_all('td')[2].get_text(strip=True)
         prow["quantity_unit"] = product_table.find_all('tr')[2].find_all('td')[3].get_text(strip=True)
         prow["transport"] = product_table.find_all('tr')[2].find_all('td')[5].get_text(strip=True)
+    except:
+        pass
+
+    try:
+        prow["kml_link"] = [a['href'] for a in soup.find_all('a', href=True) if "download.aspx" in a['href'] and ".kml" in a['href']][0]
     except:
         pass
 
@@ -249,12 +259,17 @@ def parse_form2_html(state, pid):
     except:
         pass
 
+    try:
+        prow["kml_link"] = [a['href'] for a in soup.find_all('a', href=True) if "download.aspx" in a['href'] and ".kml" in a['href']][0]
+    except:
+        pass
+
     return prow
 
 
 def construct_form2_df(state):
     # Create the path to store the Form 2 data to
-    output_path = f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_form2_data.csv"
+    output_path = f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_form2_data_temp.csv"
     if os.path.isfile(output_path):
         return pd.read_csv(output_path)
 
@@ -264,6 +279,41 @@ def construct_form2_df(state):
 
     print(form2_df)
     form2_df.to_csv(output_path, index=False)
+
+
+def download_project_kml(project, directory, column_name):
+
+    kml_path = f"{directory}{project['pid']}.kml"
+    link = project[column_name]
+
+    # Quit if the link doesn't exist or the kml is already downloaded
+    if type(link) != str or str(link) == "NaN" or str(link) == "" or os.path.isfile(kml_path):
+        return
+
+    # Download and store the pdf
+    try:
+        response = requests.get("https://environmentclearance.nic.in/" + link[3:], verify=False)
+        if response.status_code == 200:
+            with open(kml_path, 'wb') as file:
+                file.write(response.content)
+        else:
+            print(f"Failed to download KML from: {link}")
+    except Exception as e:
+        print(f"Failed to download KML from: {link}, error: {e}")
+
+
+def download_all_kmls(state):
+
+    # Find or create the folder to store the pdfs to
+    output_directory = f"D:/assorted/Dropbox/Environment_Clearance/{state}/kmls/"
+    if not os.path.exists(output_directory):
+        os.mkdir(output_directory)
+
+    df = pd.read_csv(f"D:/assorted/Dropbox/Environment_Clearance/{state}/{state}_ec_form2_data_temp.csv")
+
+    # Download it for each project
+    print(f"Downloading KMLs...")
+    df.progress_apply(download_project_kml, axis=1, args=(output_directory, "kml_link"))
 
 
 def merge_sources(state, output_path):
@@ -278,11 +328,12 @@ def merge_sources(state, output_path):
 
 
 if __name__ == "__main__":
-    state_name = "Himachal_Pradesh"
+    state_name = "Andhra_Pradesh"
     path = f"D:/assorted/Dropbox/Environment_Clearance/{state_name}/{state_name}_ec_compiled_data.csv"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():
 
     construct_form2_df(state_name)
-    merge_sources(state_name, path)
+    download_all_kmls(state_name)
+    # merge_sources(state_name, path)

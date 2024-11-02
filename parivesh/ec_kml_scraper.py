@@ -25,9 +25,12 @@ def parse_kml_jsons(state, pid, cid):
     if not os.path.exists(json_path):
         return ""
 
-    with open(json_path, "r") as file:
-        json_data = json.load(file)
-        kml_data = json_data["proponentApplications"]["projectDetailDto"]["commonFormDetails"][0]["cafKML"][0]["caf_kml"]
+    try:
+        with open(json_path, "r") as file:
+            json_data = json.load(file)
+            kml_data = json_data["proponentApplications"]["projectDetailDto"]["commonFormDetails"][0]["cafKML"][0]["caf_kml"]
+    except:
+        return {"pid": pid, "uuid": None, "mappingid": None, "document_name": None, "type": None, "version": None, "link": None}
 
     # Construct and return the row of data
     link_string = f"{base_url}/dms/okm/downloadDocument?&docTypemappingId={str(kml_data['document_mapping_id'])}&refId={str(int(cid))}&refType={kml_data['type']}&uuid={kml_data['uuid']}&version={str(kml_data['version'])}"
@@ -87,7 +90,7 @@ def construct_kml_df(state):
 
 if __name__ == "__main__":
 
-    state_name = "Punjab"
+    state_name = "West_Bengal"
 
     # Placing the below code inside this loop should allow every state to be scraped in one run
     # for state_name in state_codes.keys():

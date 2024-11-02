@@ -61,3 +61,10 @@ Set of scrapers to grab political economy data from various GoI sites. Wrote the
 
  - ##### name_classifiers
      - Classifiers to assign gender/caste/tribe values to Indian names
+
+### MyNeta/
+
+ - ##### myneta_main_scraper
+     - Given a state and year, scrape the names and summary data of each winner from that state election
+ - ##### myneta_candidate_scraper
+     - Given a state, year, and candidate ID, scrape the details of that winner from that candidate's page
