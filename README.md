@@ -1,5 +1,5 @@
 # GoI_scrapers
-Set of scrapers to grab political economy data from various GoI sites. Wrote these in the course of research work in Spring and Summer 2024.
+Set of scrapers to grab political economy data from various GoI sites. Wrote these in the course of research work in Spring, Summer and Monsoon 2024.
 
 
 ### / (analysis)
@@ -67,4 +67,4 @@ Set of scrapers to grab political economy data from various GoI sites. Wrote the
  - ##### myneta_main_scraper
      - Given a state and year, scrape the names and summary data of each winner from that state election
  - ##### myneta_candidate_scraper
-     - Given a state, year, and candidate ID, scrape the details of that winner from that candidate's page
+     - Given a state, year, and candidate ID, scrape the details of that winner from that candidate's pagegi
