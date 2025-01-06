@@ -20,16 +20,16 @@ sf_use_s2(FALSE)
 
 ```{r data, include=FALSE, eval=TRUE}
 # Load the minutes dataset
-df <- read.csv("D:/code/polsci_scrapers/parivesh/parsed_data.csv")
-sentiment <- read.csv("D:/code/polsci_scrapers/parivesh/sentiment_data.csv")
+df <- read.csv("D:/code/polsci_scrapers/parivesh/datasets/minutes_compiled_data.csv")
 ```
 
 ```{r name_counts, echo=FALSE}
-kable(head(sentiment))
-kable(nrow(sentiment))
+kable(head(df))
+kable(nrow(df))
 
 name_counts <- df %>%
-  mutate(names = str_extract_all(member_text, "\\b[^()]+(?= \\()")) %>% 
+  group_by(filename)%>%
+  mutate(names = str_extract_all(members, "\\b[^()]+(?= \\()")) %>% 
   unnest(names) %>%
   count(names, name = "count")%>%
   arrange(desc(count))
@@ -37,43 +37,33 @@ name_counts <- df %>%
 kable(head(name_counts))
 ```
 
-```{r project_counts, echo=FALSE}
-project_counts <- df%>%
-  mutate(projects = str_split(project_ids, ";\\s*")) %>% 
-  unnest(projects) %>%
-  mutate(projects = str_trim(projects)) %>%
-  filter(projects != "") %>%
-  count(projects, name = "count") %>%
-  arrange(desc(count))
-
-kable(head(project_counts))
-```
-
 ```{r unroll_df}
-df2 <- df%>%
+df <- df%>%
   mutate(date = dmy(date))%>%
   mutate(year = year(date))%>%
-    mutate(month_year = paste(year(date), sprintf("%02d", month(date)), sep = "-"))%>%
-  mutate(projects = str_split(project_ids, ";\\s*")) %>%
-  mutate(names = str_extract_all(member_text, "\\b[^()]+(?= \\()"), designations = str_extract_all(member_text, "(?<=\\().+?(?=\\))")) %>%
-  unnest(projects)%>%
-  rowwise() %>%
+  mutate(month_year = paste(year(date), sprintf("%02d", month(date)), sep = "-"))
+
+df2 <- df%>%
+  group_by(filename)%>%
+  rowwise()%>%
+  mutate(names = str_extract_all(members, "\\b[^()]+(?= \\()"), designations = str_extract_all(members, "(?<=\\().+?(?=\\))")) %>%
   mutate(
     names = list(c(names, rep(NA, max(0, length(designations) - length(names))))),
     designations = list(c(designations, rep(NA, max(0, length(names) - length(designations)))))
   ) %>%
   unnest(c(names, designations)) %>%
   ungroup()%>%
-  select(-member_text, -project_ids)
+  select(-members)%>%
+  group_by(filename)
 
-kable(head(df2, 20))
+kable(head(df2))
 kable(nrow(df2))
 ```
 
 ```{r plots, echo=FALSE}
 counts <- df2%>%
     group_by(date)%>%
-    summarize(proj_count = n_distinct(projects), name_count = n_distinct(names))%>%
+    summarize(proj_count = n_distinct(project_id), name_count = n_distinct(names))%>%
     ungroup()
 
 ggplot(counts, aes(x = date, y = proj_count)) +
@@ -101,75 +91,69 @@ ggplot(counts, aes(x = date, y = proj_count/name_count)) +
   theme_economist() + scale_fill_economist()
 ```
 
-```{r merge_dfs, echo=FALSE}
-df3 <- inner_join(df2, sentiment, by=c("projects" = "project_id"))
-kable(head(df3))
-kable(length(unique(df3$projects)))
-```
-
 ```{r sentimentplot, echo=FALSE}
-ggplot(df3, aes(x = factor(month_year), y = num_words)) +
+ggplot(df, aes(x = factor(month_year), y = num_words)) +
   geom_boxplot() +
   labs(title = "Words per Project") +
   xlab("Year") +
   ylab("Number of words") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(month_year), y = compound)) +
+ggplot(df, aes(x = factor(month_year), y = compound)) +
   geom_boxplot() +
   labs(title = "Sentiment per Project") +
   xlab("Year") +
   ylab("Compound score") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(month_year), y = first512)) +
+ggplot(df, aes(x = factor(month_year), y = first512)) +
   geom_boxplot() +
   labs(title = "Sentiment per first 512 words per Project") +
   xlab("Year") +
   ylab("Compound score") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(month_year), y = last512)) +
+ggplot(df, aes(x = factor(month_year), y = last512)) +
   geom_boxplot() +
   labs(title = "Sentiment per last 512 words per Project") +
   xlab("Year") +
   ylab("Compound score") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(month_year), y = polarity)) +
+ggplot(df, aes(x = factor(month_year), y = polarity)) +
   geom_boxplot() +
   labs(title = "Polarity by Month") +
   xlab("Year") +
   ylab("Polarity") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(month_year), y = subjectivity)) +
+ggplot(df, aes(x = factor(month_year), y = subjectivity)) +
   geom_boxplot() +
   labs(title = "Subjectivity by Month") +
   xlab("Year") +
   ylab("Subjectivity") +
   theme(axis.text.x = element_text(angle = 45))
 
-ggplot(df3, aes(x = factor(meeting_index), y = polarity)) +
+ggplot(df, aes(x = factor(meeting_index), y = polarity)) +
   geom_boxplot() +
   labs(title = "Polarity by Meeting Index") +
   xlab("Index") +
   ylab("Polarity")
 
-ggplot(df3, aes(x = factor(meeting_index), y = subjectivity)) +
+ggplot(df, aes(x = factor(meeting_index), y = subjectivity)) +
   geom_boxplot() +
   labs(title = "Subjectivity by Meeting Index") +
   xlab("Index") +
   ylab("Subjectivity")
 
-ggplot(df3, aes(x = neg, y = pos)) +
+ggplot(df, aes(x = neg, y = pos)) +
   geom_point() +
   geom_smooth(method = "lm",  se = TRUE, color = "skyblue") + 
   labs(title = "Positivty/Negativity by Project") +
   xlab("Negativity") +
   ylab("Positivity")
 
-ggplot(df3, aes(x = subjectivity, y = polarity)) +
+ggplot(df, aes(x = subjectivity, y = polarity)) +
   geom_point() +
   geom_smooth(method = "lm",  se = TRUE, color = "skyblue") + 
   labs(title = "Polarity/Subjectivity by Project") +
